@@ -35,13 +35,14 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form onSubmit={onSubmit} className="mt-6 grid gap-3.5">
-      <label className="label">
-        New password
+      <div className="label">
+        <label htmlFor="new-password">New password</label>
         <span className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate">
             <FontAwesomeIcon icon={faLock} className="size-4" />
           </span>
           <input
+            id="new-password"
             name="password"
             type={showPassword ? "text" : "password"}
             required
@@ -58,7 +59,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
             <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} className="size-4" />
           </button>
         </span>
-      </label>
+      </div>
       {error && <p className="rounded-lg bg-[#F8E3DC] px-3 py-2 text-sm text-[#9A3A26]">{error}</p>}
       <Button variant="solid" type="submit" disabled={busy} className="mt-1 w-full">
         {busy ? "Updating…" : "Set new password"}

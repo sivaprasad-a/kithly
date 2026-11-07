@@ -12,7 +12,7 @@ test("host creates an invite and sees a guest's RSVP", async ({ page, browser },
   await page.getByRole("tab", { name: "Create account" }).click();
   await page.getByLabel("Your name").fill("Priya Rao");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("correct-horse-42");
+  await page.getByLabel("Password", { exact: true }).fill("correct-horse-42");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Your celebrations" })).toBeVisible();
 
