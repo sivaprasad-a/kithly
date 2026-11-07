@@ -1,0 +1,81 @@
+name: Release pipeline
+
+# Dev → QA → Prod, one feature at a time, each step waiting for your approval.
+#
+#  • A feature is squash-merged into `dev`  → this run starts:
+#      1. Deploy to Dev   (waits for approval)
+#      2. Promote to QA   (waits for approval) — cherry-picks just that feature onto `qa`, then deploys QA
+#      3. Promote to Prod (waits for approval) — cherry-picks it onto `main`, then deploys Prod
+#    Reject a step and the feature stops there; nothing later is touched.
+#  • A hotfix merged straight into `qa` or `main` deploys only that environment (after approval).
+#  • "Run workflow" (manual) redeploys the current head of one environment's branch.
+
+on:
+  push:
+    branches: [dev, qa, main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to (re)deploy from its branch
+        type: choice
+        options: [dev, qa, production]
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Feature flow: push to dev ────────────────────────────────────────
+  dev:
+    if: github.event_name == 'push' && github.ref_name == 'dev'
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: dev
+      branch: dev
+    secrets: inherit
+
+  qa:
+    needs: dev
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: qa
+      branch: qa
+      promote_before: ${{ github.event.before }}
+      promote_after: ${{ github.event.after }}
+    secrets: inherit
+
+  prod:
+    needs: qa
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: production
+      branch: main
+      promote_before: ${{ github.event.before }}
+      promote_after: ${{ github.event.after }}
+    secrets: inherit
+
+  # ── Hotfixes: push straight to qa or main ────────────────────────────
+  qa-hotfix:
+    if: github.event_name == 'push' && github.ref_name == 'qa'
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: qa
+      branch: qa
+    secrets: inherit
+
+  prod-hotfix:
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: production
+      branch: main
+    secrets: inherit
+
+  # ── Manual redeploy ──────────────────────────────────────────────────
+  manual:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/_release.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.environment == 'production' && 'main' || inputs.environment }}
+    secrets: inherit

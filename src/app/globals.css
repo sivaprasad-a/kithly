@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Palette: gold DAA112 · sage 809276 · olive 666E51 · teal 10383A · slate 768886 */
+@theme {
+  --color-gold: #daa112;
+  --color-gold-soft: #f3de9e;
+  --color-sage: #809276;
+  --color-olive: #666e51;
+  --color-teal: #10383a;
+  --color-teal-deep: #0a2a2c;
+  --color-slate: #768886;
+  --color-cream: #f5f2e9;
+  --color-paper: #fbf9f4;
+  --color-ink: #16302f;
+  --color-muted: #6b7470;
+  --color-veg: #4e8a3a;
+  --color-nonveg: #b5452f;
+
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Jost Variable", system-ui, sans-serif;
+  --font-script: "Pinyon Script", cursive;
+  --font-modern: "Playfair Display Variable", Georgia, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Deep teal stage with soft bokeh, taken from the palette photo */
+.stage-bg {
+  background:
+    radial-gradient(600px 420px at 18% 22%, rgba(38, 104, 104, 0.55), transparent 60%),
+    radial-gradient(520px 520px at 82% 70%, rgba(24, 84, 86, 0.55), transparent 62%),
+    radial-gradient(300px 300px at 62% 18%, rgba(118, 136, 134, 0.18), transparent 70%),
+    linear-gradient(160deg, #123f41 0%, #10383a 45%, #0a2a2c 100%);
+}
+
+.field {
+  @apply w-full min-w-0 rounded-[9px] border border-teal/15 bg-paper px-3 py-2 text-sm text-ink outline-none transition;
+}
+.field:focus {
+  @apply border-sage bg-white;
+  box-shadow: 0 0 0 3px rgba(128, 146, 118, 0.18);
+}
+.label {
+  @apply grid gap-1.5 text-xs tracking-wide text-muted;
+}
+.eyebrow {
+  @apply text-[11px] font-medium uppercase tracking-[0.25em];
 }

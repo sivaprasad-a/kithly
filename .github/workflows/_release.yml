@@ -1,0 +1,192 @@
+name: _release (reusable)
+
+# One gated step of the pipeline: wait for approval → (optionally) promote the
+# feature's commits onto the environment's branch → build → deploy to Vercel.
+#
+# Each environment is its own Vercel project, so each has a stable URL:
+#   dev        → <prefix>-dev.vercel.app
+#   qa         → <prefix>-qa.vercel.app
+#   production → <prefix>.vercel.app
+# Projects and their environment variables are created on the first deploy.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: dev | qa | production (GitHub environment with required reviewers)
+        type: string
+        required: true
+      branch:
+        description: Branch that mirrors this environment
+        type: string
+        required: true
+      promote_before:
+        description: Start of the pushed commit range to cherry-pick onto `branch` (feature flow only)
+        type: string
+        default: ""
+      promote_after:
+        description: End of the pushed commit range
+        type: string
+        default: ""
+    secrets:
+      VERCEL_TOKEN:
+        required: true
+      MONGODB_URI:
+        required: false
+      GOOGLE_GENERATIVE_AI_API_KEY:
+        required: false
+
+jobs:
+  release:
+    name: ${{ inputs.promote_after != '' && 'Promote & deploy' || 'Deploy' }} → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_QUERY: ${{ vars.VERCEL_TEAM_ID && format('teamId={0}', vars.VERCEL_TEAM_ID) || '' }}
+      PREFIX: ${{ vars.VERCEL_PROJECT_PREFIX || 'kithly' }}
+      APP_NAME: ${{ vars.APP_NAME || 'Kithly' }}
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error title=Missing VERCEL_TOKEN::Add it under Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.promote_after != '' && inputs.branch || (github.ref_name == inputs.branch && github.sha || inputs.branch) }}
+
+      # ── Promote: put exactly this feature's commits on top of the branch ──
+      - name: Promote feature onto ${{ inputs.branch }}
+        if: inputs.promote_after != ''
+        env:
+          TARGET: ${{ inputs.branch }}
+          BEFORE: ${{ inputs.promote_before }}
+          AFTER: ${{ inputs.promote_after }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # New branch or force-push: just take the tip commit.
+          if [[ "$BEFORE" =~ ^0+$ ]] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            RANGE="$AFTER^!"
+          else
+            RANGE="$BEFORE..$AFTER"
+          fi
+          COMMITS=$(git rev-list --reverse --no-merges "$RANGE")
+          echo "Promoting onto $TARGET:"; git log --oneline --no-walk $COMMITS
+
+          for attempt in 1 2 3; do
+            git fetch origin "$TARGET"
+            git checkout -B "$TARGET" "origin/$TARGET"
+            for c in $COMMITS; do
+              if ! git cherry-pick -x "$c"; then
+                # Already on the branch (empty pick) → skip it; a real conflict → stop.
+                if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+                  echo "Already present on $TARGET, skipping $(git log -1 --format=%h "$c")"
+                  git cherry-pick --skip
+                  continue
+                fi
+                git cherry-pick --abort || true
+                {
+                  echo "### ❌ Couldn't promote to \`$TARGET\`"
+                  echo "Commit \`$(git log -1 --format='%h %s' "$c")\` doesn't apply cleanly — it probably depends on a feature that hasn't been promoted yet."
+                  echo ""
+                  echo "Fix: promote the earlier feature first, or open a PR into \`$TARGET\` that resolves the conflict."
+                } >> "$GITHUB_STEP_SUMMARY"
+                echo "::error::Cherry-pick of $c onto $TARGET failed (conflict). See the run summary."
+                exit 1
+              fi
+            done
+            if git push origin "HEAD:$TARGET"; then break; fi
+            [ "$attempt" = 3 ] && { echo "::error::Could not push to $TARGET"; exit 1; }
+            echo "Branch moved while promoting — retrying ($attempt)…"; sleep $((attempt * 5))
+          done
+          echo "Promoted. $TARGET is now at $(git rev-parse --short HEAD)."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # ── Vercel project + env vars (idempotent) ──────────────────────────
+      - name: Prepare Vercel project
+        id: project
+        env:
+          ENV_NAME: ${{ inputs.environment }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          GOOGLE_AI_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+        run: |
+          set -euo pipefail
+          API=https://api.vercel.com
+          AUTH="Authorization: Bearer $VERCEL_TOKEN"
+          q() { if [ -n "$TEAM_QUERY" ]; then echo "$1$2$TEAM_QUERY"; else echo "$1"; fi; }
+
+          case "$ENV_NAME" in
+            production) PROJECT="$PREFIX";        LABEL="";    DB="${PREFIX}_prod" ;;
+            *)          PROJECT="$PREFIX-$ENV_NAME"; LABEL="$(echo "$ENV_NAME" | tr a-z A-Z)"; DB="${PREFIX}_${ENV_NAME}" ;;
+          esac
+
+          if ! project=$(curl -sf -H "$AUTH" "$(q "$API/v9/projects/$PROJECT" "?")"); then
+            echo "Creating Vercel project $PROJECT"
+            project=$(curl -sfS -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"name\":\"$PROJECT\",\"framework\":\"nextjs\"}" "$(q "$API/v11/projects" "?")")
+          fi
+          PROJECT_ID=$(jq -r .id <<<"$project")
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+          echo "VERCEL_ORG_ID=$(jq -r .accountId <<<"$project")" >> "$GITHUB_ENV"
+          echo "name=$PROJECT" >> "$GITHUB_OUTPUT"
+
+          existing=$(curl -sf -H "$AUTH" "$(q "$API/v10/projects/$PROJECT_ID/env" "?")" | jq -r '.envs[].key')
+          setenv() {
+            curl -sfS -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              "$(q "$API/v10/projects/$PROJECT_ID/env?upsert=true" "&")" \
+              -d "$(jq -n --arg k "$1" --arg v "$2" '{key:$k, value:$v, type:"encrypted", target:["production","preview"]}')" > /dev/null
+          }
+
+          if ! grep -qx BETTER_AUTH_SECRET <<<"$existing"; then
+            secret=$(openssl rand -base64 32); echo "::add-mask::$secret"
+            setenv BETTER_AUTH_SECRET "$secret"; echo "Generated BETTER_AUTH_SECRET"
+          fi
+          setenv NEXT_PUBLIC_APP_NAME "$APP_NAME"
+          if [ -n "$LABEL" ]; then setenv NEXT_PUBLIC_ENV_LABEL "$LABEL"; fi
+          setenv MONGODB_DB "$DB"
+          if [ -n "$MONGODB_URI" ]; then setenv MONGODB_URI "$MONGODB_URI";
+          else echo "::warning title=No MONGODB_URI::$ENV_NAME will run on the in-memory store, which loses data between requests on Vercel. Add a MONGODB_URI repository secret."; fi
+          if [ -n "$GOOGLE_AI_KEY" ]; then setenv GOOGLE_GENERATIVE_AI_API_KEY "$GOOGLE_AI_KEY"; fi
+
+      - name: Build
+        run: |
+          npx --yes vercel@65 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@65 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy
+        id: deploy
+        run: |
+          set -euo pipefail
+          npx --yes vercel@65 deploy --prebuilt --prod --token="$VERCEL_TOKEN" > deployment-url.txt
+          DEPLOYMENT=$(tail -1 deployment-url.txt)
+          q() { if [ -n "$TEAM_QUERY" ]; then echo "$1$2$TEAM_QUERY"; else echo "$1"; fi; }
+          DOMAIN=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "$(q "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID/domains" "?")" | jq -r '[.domains[].name] | sort_by(length) | first // empty')
+          URL=${DOMAIN:+https://$DOMAIN}; URL=${URL:-$DEPLOYMENT}
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          {
+            echo "### 🚀 ${{ inputs.environment }} is live"
+            echo ""
+            echo "| | |"; echo "|---|---|"
+            echo "| Link | $URL |"
+            echo "| Branch | \`${{ inputs.branch }}\` @ \`$(git rev-parse --short HEAD)\` |"
+            echo "| Vercel project | \`${{ steps.project.outputs.name }}\` |"
+            echo "| This deployment | $DEPLOYMENT |"
+          } >> "$GITHUB_STEP_SUMMARY"
