@@ -205,9 +205,9 @@ export function SignInForm({ providers, next }: { providers: Array<"google" | "f
             <input name="email" type="email" required className="field !pl-9" autoComplete="email" />
           </span>
         </label>
-        <label className="label">
+        <div className="label">
           <span className="flex items-center justify-between">
-            Password
+            <label htmlFor="password">Password</label>
             {mode === "in" && (
               <button type="button" onClick={() => setForgot(true)} className="font-medium normal-case text-sage hover:underline">
                 Forgot password?
@@ -219,6 +219,7 @@ export function SignInForm({ providers, next }: { providers: Array<"google" | "f
               <FontAwesomeIcon icon={faLock} className="size-4" />
             </FieldIcon>
             <input
+              id="password"
               name="password"
               type={showPassword ? "text" : "password"}
               required
@@ -235,7 +236,7 @@ export function SignInForm({ providers, next }: { providers: Array<"google" | "f
               <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} className="size-4" />
             </button>
           </span>
-        </label>
+        </div>
         {error && <p className="rounded-lg bg-[#F8E3DC] px-3 py-2 text-sm text-[#9A3A26]">{error}</p>}
         <Button variant="solid" type="submit" disabled={busy} className="mt-1 w-full">
           {busy ? "One moment…" : mode === "in" ? "Sign in" : "Create account"}
