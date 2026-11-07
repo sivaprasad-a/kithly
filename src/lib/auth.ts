@@ -33,7 +33,15 @@ const baseURL =
 export const auth = betterAuth({
   baseURL,
   database: hasMongo() ? mongodbAdapter(getMongo().db, { client: getMongo().client }) : memoryAdapter(memDb as never),
-  emailAndPassword: { enabled: true, minPasswordLength: 8 },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    // No email provider configured yet (see README roadmap — Resend, free tier). Until then,
+    // the reset link is printed to the server console so the flow still works end-to-end in dev.
+    sendResetPassword: async ({ user, url }) => {
+      console.log(`[kithly] Password reset for ${user.email}: ${url}`);
+    },
+  },
   socialProviders,
   plugins: [nextCookies()],
 });
