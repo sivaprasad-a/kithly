@@ -10,8 +10,8 @@
 set -euo pipefail
 
 REPO_NAME=${REPO:-kithly}
-OWNER=$(gh api user --jq .login)
-OWNER_ID=$(gh api user --jq .id)
+OWNER=${OWNER:-$(gh api user --jq .login)}
+OWNER_ID=${OWNER_ID:-$(gh api "users/$OWNER" --jq .id)}
 FULL="$OWNER/$REPO_NAME"
 echo "→ Setting up $FULL"
 
