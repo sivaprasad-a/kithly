@@ -16,7 +16,7 @@ FULL="$OWNER/$REPO_NAME"
 echo "→ Setting up $FULL"
 
 # 1. Repository ---------------------------------------------------------------
-if ! gh repo view "$FULL" >/dev/null 2>&1; then
+if ! gh api "repos/$FULL" >/dev/null 2>&1; then
   gh repo create "$FULL" --public \
     --description "Intimate event invitations for your closest circle — Next.js, MongoDB, Vercel" \
     --homepage "https://$REPO_NAME.vercel.app"
