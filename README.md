@@ -25,6 +25,23 @@ Visit http://localhost:3000 → **Sign in → Create account** → **Create an i
 
 With no `MONGODB_URI`, data lives in memory and resets when the dev server restarts. That's fine for clicking around. Add a database below when you want it to stick.
 
+### Test accounts
+
+**Local dev** (`npm run dev` with no `MONGODB_URI`) — created against the in-memory store, so they only exist for the life of that dev server process:
+
+| Name | Email | Password |
+|---|---|---|
+| Priya Rao | `host@example.com` | `testpass123` |
+| Rahul Mehta | `demo@example.com` | `testpass123` |
+
+**Deployed environments** (Dev, QA, Prod) — now backed by real MongoDB ([#3](https://github.com/sivaprasad-a/kithly/issues/3) resolved), each environment has its own database, so this is really three separate accounts that happen to share the same credentials for convenience:
+
+| Environment | Email | Password |
+|---|---|---|
+| [Dev](https://kithly-dev.vercel.app) | `host@example.com` | `testpass123` |
+| [QA](https://kithly-qa.vercel.app) | `host@example.com` | `testpass123` |
+| [Prod](https://kithly-eight.vercel.app) | `host@example.com` | `testpass123` |
+
 ## Add a database (free)
 
 **Option A: MongoDB Atlas M0 (free forever, recommended for the dev environment)**
