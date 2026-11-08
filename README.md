@@ -1,5 +1,7 @@
 # Kithly — intimate invitations for your closest circle
 
+**v0.1.0**
+
 > **Working name.** Change `NEXT_PUBLIC_APP_NAME` in `.env.local` and every screen updates.
 
 Hosts design an elegant invite, send personal links over WhatsApp, email or Instagram, and see who's coming, what they'll eat and what they'll drink. Guests never need an account.
@@ -55,7 +57,7 @@ Without an AI key, **"Write it with Kiki"** falls back to built-in templates, so
 |---|---|---|
 | Dev | `dev` | https://kithly-dev.vercel.app |
 | QA | `qa` | https://kithly-qa.vercel.app |
-| Prod | `main` | https://kithly.vercel.app |
+| Prod | `main` | https://kithly-eight.vercel.app |
 
 Features go **feature branch → PR into `dev` → approve Dev → approve QA → approve Prod**. Each feature is promoted on its own, and nothing deploys without your approval. Details and setup are in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
