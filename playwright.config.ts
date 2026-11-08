@@ -10,7 +10,9 @@ const PORT = 3100;
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  // Dev mode compiles each route on first visit (Turbopack on-demand compilation), so the
+  // first navigation to a not-yet-hit page can be noticeably slower than steady-state.
+  expect: { timeout: 20_000 },
   fullyParallel: false,
   reporter: [["list"]],
   use: {
