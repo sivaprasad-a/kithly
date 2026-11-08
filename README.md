@@ -25,6 +25,17 @@ Visit http://localhost:3000 → **Sign in → Create account** → **Create an i
 
 With no `MONGODB_URI`, data lives in memory and resets when the dev server restarts. That's fine for clicking around. Add a database below when you want it to stick.
 
+### Test accounts (local dev only)
+
+Two accounts you can sign in with right away on a freshly started `npm run dev` — created against the in-memory store, so they only exist for the life of that dev server process:
+
+| Name | Email | Password |
+|---|---|---|
+| Priya Rao | `host@example.com` | `testpass123` |
+| Rahul Mehta | `demo@example.com` | `testpass123` |
+
+> These **won't work on the deployed Dev/QA/Prod environments**: none of them have a real database configured yet, so Vercel's serverless instances don't share the in-memory store between requests — a signed-up account can disappear before you get to sign in with it. Tracked in [#3](https://github.com/sivaprasad-a/kithly/issues/3). Once `MONGODB_URI` is set per environment, create real accounts there the normal way (**Sign in → Create account**).
+
 ## Add a database (free)
 
 **Option A: MongoDB Atlas M0 (free forever, recommended for the dev environment)**
