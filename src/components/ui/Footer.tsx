@@ -10,7 +10,11 @@ export function Footer() {
   // The current year is read after mount, not during render, so it never embeds
   // a stale value in a prerendered/cached shell (see Next.js's "unstable new Date()" check).
   const [year, setYear] = useState(LAUNCH_YEAR);
-  useEffect(() => setYear(new Date().getFullYear()), []);
+  useEffect(() => {
+    // One-time read of a browser-only value on mount — not a reactive sync loop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setYear(new Date().getFullYear());
+  }, []);
 
   return (
     <footer className="relative z-10 border-t border-white/10 px-4 py-6 sm:px-6">

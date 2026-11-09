@@ -15,6 +15,8 @@ export function InstallAppButton({ className }: { className?: string }) {
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
+    // One-time read of a browser-only value on mount — not a reactive sync loop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (window.matchMedia("(display-mode: standalone)").matches) setInstalled(true);
     const onPrompt = (e: Event) => {
       e.preventDefault();
