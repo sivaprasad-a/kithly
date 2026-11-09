@@ -23,6 +23,23 @@ export function fmtLongDate(d: string): string {
   return x ? x.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }) : "";
 }
 
+export type EventStatus = "draft" | "upcoming" | "completed";
+
+/**
+ * Derived from data we already have — no separate status field to keep in sync.
+ * Draft: nobody's been invited yet. Completed: the date has passed. Otherwise upcoming.
+ */
+export function eventStatus(invite: { date: string }, familyCount: number): EventStatus {
+  if (familyCount === 0) return "draft";
+  const d = parseDate(invite.date);
+  if (d) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (d < today) return "completed";
+  }
+  return "upcoming";
+}
+
 export function mapsHref(mapUrl: string, address: string): string {
   if (/^https?:\/\//i.test(mapUrl)) return mapUrl;
   if (!address.trim()) return "";

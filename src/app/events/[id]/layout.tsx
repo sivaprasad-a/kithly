@@ -12,7 +12,7 @@ export default function EventLayout({ children }: LayoutProps<"/events/[id]">) {
           </Suspense>
         }
       />
-      {children}
+      <div className="pt-16">{children}</div>
     </>
   );
 }
