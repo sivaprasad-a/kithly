@@ -9,10 +9,16 @@ async function CurrentUser() {
 }
 
 /** Top bar for signed-in host pages. `center` takes tabs; `actions` takes buttons. */
-export function HostHeader({ center, actions }: { center?: ReactNode; actions?: ReactNode }) {
+export function HostHeader({ center, actions, dark = false }: { center?: ReactNode; actions?: ReactNode; dark?: boolean }) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-teal/10 bg-paper px-4 sm:px-6">
-      <Brand href="/dashboard" />
+    <header
+      className={
+        dark
+          ? "fixed inset-x-0 top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[#0b2426]/95 px-4 backdrop-blur sm:px-6"
+          : "fixed inset-x-0 top-0 z-30 flex h-16 items-center gap-3 border-b border-teal/10 bg-paper px-4 sm:px-6"
+      }
+    >
+      <Brand href="/dashboard" light={dark} />
       <div className="mx-auto">{center}</div>
       <div className="flex items-center gap-2">
         {actions}
